@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.30;
 
-
 /**
  * @author  atharva-potdar
  * @title   Raffle Smart Contract
@@ -11,8 +10,7 @@ pragma solidity ^0.8.30;
  */
 
 contract Raffle {
-
-    /* 
+    /*
         The two main functions that our smart contract will revolve around are:
         Entering the raffle and then picking the winner. Everything else will
         be built around these.
@@ -28,9 +26,11 @@ contract Raffle {
 
     function pickWinner() public {}
 
-    /** Getter functions **/
+    /**
+     * Getter functions
+     */
 
-    function getEntranceFee() external view returns(uint256) {
+    function getEntranceFee() external view returns (uint256) {
         return I_ENTRANCE_FEE;
     }
 }
