@@ -10,6 +10,11 @@ pragma solidity ^0.8.30;
  */
 
 contract Raffle {
+    /**
+     * Errors
+     */
+    error Raffle__NotEnoughMoneyToEnter();
+
     /*
         The two main functions that our smart contract will revolve around are:
         Entering the raffle and then picking the winner. Everything else will
@@ -22,7 +27,11 @@ contract Raffle {
         I_ENTRANCE_FEE = entranceFee;
     }
 
-    function enterRaffle() public {}
+    function enterRaffle() public payable {
+        if (msg.value < I_ENTRANCE_FEE) {
+            revert Raffle__NotEnoughMoneyToEnter();
+        }
+    }
 
     function pickWinner() public {}
 
