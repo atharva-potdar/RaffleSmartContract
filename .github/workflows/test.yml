@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "**.sol"
+      - "**.toml"
+      - "script/**"
+      - "test/**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    paths:
+      - "**.sol"
+      - "**.toml"
+      - "script/**"
+      - "test/**"
+      - ".github/workflows/test.yml"
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same workflow and branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  # This job adds a 5-minute delay to debounce rapid pushes to the same branch,
+  # saving resources by running tests only on the latest commit in a series.
+  delay:
+    name: Debounce rapid pushes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Wait 5 minutes for more pushes
+        run: sleep 300
+
+  # This job runs in parallel with the test job and provides fast feedback on code formatting.
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    needs: [delay]
+    # The 'if' condition ensures this job runs after the delay on a 'push' event,
+    # or immediately on other events like 'pull_request'.
+    if: always() && (needs.delay.result == 'success' || github.event_name != 'push')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Shallow clone for speed
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly # Use nightly for latest features
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Run Forge fmt
+        run: forge fmt --check
+
+  # This job handles the core build and test execution.
+  # It runs in parallel with the lint job for maximum efficiency.
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: [delay]
+    # The 'if' condition ensures this job runs after the delay on a 'push' event,
+    # or immediately on other events like 'pull_request'.
+    if: always() && (needs.delay.result == 'success' || github.event_name != 'push')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1 # Shallow clone for speed
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      # Cache Foundry compilation artifacts for faster builds
+      - name: Cache Forge build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache
+            out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('**/foundry.toml', 'lib/**', '**.sol') }}
+          restore-keys: |
+            ${{ runner.os }}-foundry-
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Run Forge build
+        run: forge build --sizes
+        env:
+          FOUNDRY_OPTIMIZER: true
+          FOUNDRY_OPTIMIZER_RUNS: 200
+
+      - name: Run Forge tests
+        run: forge test -vvv --gas-report
+
+      # Cleanup build artifacts to save storage on successful runs
+      - name: Clean up artifacts
+        if: success()
+        run: |
+          forge clean
+          rm -rf cache out
+
+      # On failure, upload artifacts for easier debugging
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-artifacts-${{ github.sha }}
+          path: |
+            out/
+            cache/
+          retention-days: 3 # Auto-delete after 3 days to save storage

@@ -1,0 +1,12 @@
+# Compiler files
+cache/
+out/
+
+# Don't deploy broadcast files
+/broadcast
+
+# Docs
+docs/
+
+# Dotenv file
+.env
