@@ -13,7 +13,7 @@ contract Raffle {
     /**
      * Errors
      */
-    error Raffle__NotEnoughMoneyToEnter();
+    error Raffle__NotEnoughMoneyToEnterRaffle();
 
     /*
         The two main functions that our smart contract will revolve around are:
@@ -29,7 +29,7 @@ contract Raffle {
 
     function enterRaffle() public payable {
         if (msg.value < I_ENTRANCE_FEE) {
-            revert Raffle__NotEnoughMoneyToEnter();
+            revert Raffle__NotEnoughMoneyToEnterRaffle();
         }
     }
 
