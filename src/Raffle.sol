@@ -24,6 +24,9 @@ contract Raffle {
     error Raffle__RaffleDurationNotMet();
     error Raffle__NotEnoughPlayersToPickWinner();
 
+    // @dev This is an impossible error and should never be thrown
+    error Raffle__WinnerCouldNotBePicked();
+
     /**
      * State Variables
      */
@@ -94,7 +97,7 @@ contract Raffle {
     }
 
     // @dev Function to pick a winner
-    function pickWinner() external returns (address winner) {
+    function pickWinner() external returns (address) {
         uint256 totalRaffleTickets = sTotalTickets;
 
         if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
@@ -115,14 +118,16 @@ contract Raffle {
             if (randomNumber < cumulativeTickets + playerTickets) {
                 // Found the winner
                 // Transfer the raffle pool to the winner
-                winner = currentPlayer;
-                return winner;
+                return currentPlayer;
             }
             unchecked {
                 i++;
             }
             cumulativeTickets += playerTickets;
         }
+
+        // This should never be reached
+        revert Raffle__WinnerCouldNotBePicked();
     }
 
     /**
