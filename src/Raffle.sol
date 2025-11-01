@@ -2,6 +2,9 @@
 
 pragma solidity ^0.8.30;
 
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+
 /**
  * @author  atharva-potdar
  * @title   Raffle Smart Contract
@@ -23,9 +26,6 @@ contract Raffle {
     error Raffle__NotEnoughMoneyToEnterRaffle();
     error Raffle__RaffleDurationNotMet();
     error Raffle__NotEnoughPlayersToPickWinner();
-
-    // @dev This is an impossible error and should never be thrown
-    error Raffle__WinnerCouldNotBePicked();
 
     /**
      * State Variables
@@ -107,6 +107,20 @@ contract Raffle {
             revert Raffle__RaffleDurationNotMet();
         }
 
+        // // Taken from ChainLink VRF v2.5 docs
+        // requestId = s_vrfCoordinator.requestRandomWords(
+        //     VRFV2PlusClient.RandomWordsRequest({
+        //         keyHash: keyHash,
+        //         subId: s_subscriptionId,
+        //         requestConfirmations: requestConfirmations,
+        //         callbackGasLimit: callbackGasLimit,
+        //         numWords: numWords,
+        //         extraArgs: VRFV2PlusClient._argsToBytes(
+        //             VRFV2PlusClient.ExtraArgsV1({nativePayment: enableNativePayment})
+        //         )
+        //     })
+        // );
+
         uint256 randomNumber = 3; // Placeholder for ChainLink VRF random number
         address[] memory playersList = sUniquePlayersList;
         uint256 sPlayersLength = playersList.length;
@@ -125,9 +139,6 @@ contract Raffle {
             }
             cumulativeTickets += playerTickets;
         }
-
-        // This should never be reached
-        revert Raffle__WinnerCouldNotBePicked();
     }
 
     /**
