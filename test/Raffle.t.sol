@@ -10,8 +10,8 @@ contract RaffleTest is Test {
     uint256 private constant ENTRANCE_FEE = 0.001 ether;
     uint256 private constant RAFFLE_DURATION = 7 days;
     uint256 private constant MINIMUM_PLAYERS = 5;
-    address private immutable player = makeAddr("ificouldsmokefearaway");
-    address private immutable player2 = makeAddr("iwouldrollthatmfup");
+    address private immutable PLAYER = makeAddr("ificouldsmokefearaway");
+    address private immutable PLAYER2 = makeAddr("iwouldrollthatmfup");
     uint256 private blockStartTime;
 
     function setUp() public {
@@ -38,19 +38,19 @@ contract RaffleTest is Test {
     }
 
     function testGetNumberOfTickets() public {
-        vm.deal(player, ENTRANCE_FEE * 5);
-        vm.prank(player);
+        vm.deal(PLAYER, ENTRANCE_FEE * 5);
+        vm.prank(PLAYER);
         raffle.enterRaffle{value: ENTRANCE_FEE * 5}();
-        assertEq(raffle.getNumberOfTickets(player), 5);
+        assertEq(raffle.getNumberOfTickets(PLAYER), 5);
     }
 
     function testGetTotalTickets() public {
-        vm.deal(player, ENTRANCE_FEE * 4);
-        vm.prank(player);
+        vm.deal(PLAYER, ENTRANCE_FEE * 4);
+        vm.prank(PLAYER);
         raffle.enterRaffle{value: ENTRANCE_FEE * 4}();
 
-        vm.deal(player2, ENTRANCE_FEE * 6);
-        vm.prank(player2);
+        vm.deal(PLAYER2, ENTRANCE_FEE * 6);
+        vm.prank(PLAYER2);
         raffle.enterRaffle{value: ENTRANCE_FEE * 6}();
 
         assertEq(raffle.getTotalTickets(), 10);
@@ -70,8 +70,8 @@ contract RaffleTest is Test {
     }
 
     function testRevertIfRaffleDurationNotMet() public {
-        vm.deal(player, ENTRANCE_FEE * MINIMUM_PLAYERS);
-        vm.prank(player);
+        vm.deal(PLAYER, ENTRANCE_FEE * MINIMUM_PLAYERS);
+        vm.prank(PLAYER);
         raffle.enterRaffle{value: ENTRANCE_FEE * MINIMUM_PLAYERS}();
 
         vm.expectRevert();
@@ -80,12 +80,12 @@ contract RaffleTest is Test {
 
     // NOTE: This test will change after ChainLink VRF is integrated
     function testRafflePicksWinner() public {
-        vm.deal(player, ENTRANCE_FEE * (MINIMUM_PLAYERS - 3));
-        vm.prank(player);
+        vm.deal(PLAYER, ENTRANCE_FEE * (MINIMUM_PLAYERS - 3));
+        vm.prank(PLAYER);
         raffle.enterRaffle{value: ENTRANCE_FEE * (MINIMUM_PLAYERS - 3)}();
 
-        vm.deal(player2, ENTRANCE_FEE * 3);
-        vm.prank(player2);
+        vm.deal(PLAYER2, ENTRANCE_FEE * 3);
+        vm.prank(PLAYER2);
         raffle.enterRaffle{value: ENTRANCE_FEE * 3}();
 
         // Fast forward time to meet raffle duration
@@ -93,7 +93,7 @@ contract RaffleTest is Test {
 
         // This should not revert now
         address winner = raffle.pickWinner();
-        assertEq(winner, player2);
+        assertEq(winner, PLAYER2);
     }
 
     /**

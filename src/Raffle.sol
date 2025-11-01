@@ -94,7 +94,7 @@ contract Raffle {
     }
 
     // @dev Function to pick a winner
-    function pickWinner() external returns (address) {
+    function pickWinner() external returns (address winner) {
         uint256 totalRaffleTickets = sTotalTickets;
 
         if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
@@ -115,7 +115,8 @@ contract Raffle {
             if (randomNumber < cumulativeTickets + playerTickets) {
                 // Found the winner
                 // Transfer the raffle pool to the winner
-                return currentPlayer;
+                winner = currentPlayer;
+                return winner;
             }
             unchecked {
                 i++;
