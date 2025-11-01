@@ -19,6 +19,19 @@ contract Raffle is VRFConsumerBaseV2Plus {
         be built around these.
     */
 
+    /*
+        Framework for writing functions: CEI (checks, effects, interactions)
+        Checks - initial conditions with revert statements
+        Effects - updating state variables
+        Interactions - external contract calls, sending ether, etc.
+
+        You'll notice that this is kind of similar in structure to;
+        Framework for writing tests: AAA (arrange, act, assert)
+        Arrange - Sets up the initial state
+        Act - Calls the function being tested
+        Assert - Checks the final state to ensure correctness
+    */
+
     /**
      * Errors
      */
@@ -27,6 +40,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__RaffleDurationNotMet();
     error Raffle__NotEnoughPlayersToPickWinner();
     error Raffle__TransferFailed();
+    error Raffle__RaffleNotOpen();
 
     /**
      * Type Declarations
@@ -86,6 +100,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
     // @dev Emitted when a player enters the raffle
     event RaffleEntered(address indexed player, uint256 tickets);
 
+    event WinnerPicked(address indexed winner, uint256 amountWon);
+
     /**
      * Functions
      */
@@ -109,20 +125,14 @@ contract Raffle is VRFConsumerBaseV2Plus {
         sRaffleState = RaffleState.OPEN;
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-        address payable winner = payable(sUniquePlayersList[randomWords[0] % sUniquePlayersList.length]);
-        sRecentWinner = winner;
-        (bool success,) = winner.call{value: address(this).balance}("");
-
-        if (!success) {
-            revert Raffle__TransferFailed();
-        }
-    }
-
     // @dev Function to enter the raffle
     function enterRaffle() external payable {
         if (msg.value < I_ENTRANCE_FEE) {
             revert Raffle__NotEnoughMoneyToEnterRaffle();
+        }
+
+        if (sRaffleState != RaffleState.OPEN) {
+            revert Raffle__RaffleNotOpen();
         }
 
         uint256 raffleTickets = msg.value / I_ENTRANCE_FEE;
@@ -148,6 +158,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
         if (block.timestamp - sRaffleStartTime < I_RAFFLE_DURATION) {
             revert Raffle__RaffleDurationNotMet();
         }
+
+        sRaffleState = RaffleState.CALCULATING;
 
         // Taken from ChainLink VRF v2.5 docs
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
@@ -180,6 +192,27 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 i++;
             }
             cumulativeTickets += playerTickets;
+        }
+    }
+
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+        address[] memory playersList = sUniquePlayersList;
+        address payable winner = payable(playersList[randomWords[0] % playersList.length]);
+        sRecentWinner = winner;
+        sRaffleState = RaffleState.OPEN;
+        for (uint256 i = 0; i < playersList.length; i++) {
+            address player = playersList[i];
+            sPlayers[player] = 0;
+            sIsPlayerInList[player] = false;
+        }
+        sTotalTickets = 0;
+        uint256 prizeAmount = address(this).balance;
+        sRaffleStartTime = block.timestamp;
+        emit WinnerPicked(winner, prizeAmount);
+
+        (bool success,) = winner.call{value: prizeAmount}("");
+        if (!success) {
+            revert Raffle__TransferFailed();
         }
     }
 
