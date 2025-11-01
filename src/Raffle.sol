@@ -43,8 +43,17 @@ contract Raffle {
     // @dev Mapping of a player to their number of tickets
     mapping(address => uint256) private sPlayers;
 
-    // @dev List of players weighted according to their tickets
-    address[] private sWeightedPlayersList;
+    // @dev List of unique players in the raffle
+    address[] private sUniquePlayersList;
+
+    // @dev Mapping of a player to existence in the raffle list
+    mapping(address => bool) private sIsPlayerInList;
+
+    // @dev Total number of tickets in the raffle
+    uint256 private sTotalTickets;
+
+    // @dev Raffle start time
+    uint256 private sRaffleStartTime;
 
     /**
      * Events
@@ -61,6 +70,7 @@ contract Raffle {
         I_ENTRANCE_FEE = entranceFee;
         I_RAFFLE_DURATION = raffleDuration;
         I_MINIMUM_PLAYERS = minimumPlayers;
+        sRaffleStartTime = block.timestamp;
     }
 
     // @dev Function to enter the raffle
@@ -73,22 +83,44 @@ contract Raffle {
 
         sRafflePool += msg.value;
         sPlayers[msg.sender] += raffleTickets;
-        for (uint256 i = 0; i < raffleTickets;) {
-            sWeightedPlayersList.push(msg.sender);
-            unchecked {
-                ++i;
-            }
+        sTotalTickets += raffleTickets;
+
+        if (!sIsPlayerInList[msg.sender]) {
+            sUniquePlayersList.push(msg.sender);
+            sIsPlayerInList[msg.sender] = true;
         }
+
         emit RaffleEntered(msg.sender, raffleTickets);
     }
 
     // @dev Function to pick a winner
-    function pickWinner() external {
-        if (sWeightedPlayersList.length < I_MINIMUM_PLAYERS) {
+    function pickWinner() external returns (address) {
+        uint256 totalRaffleTickets = sTotalTickets;
+
+        if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
             revert Raffle__NotEnoughPlayersToPickWinner();
         }
-        if (block.timestamp % I_RAFFLE_DURATION != 0) {
+        if (block.timestamp - sRaffleStartTime < I_RAFFLE_DURATION) {
             revert Raffle__RaffleDurationNotMet();
+        }
+
+        uint256 randomNumber = 3; // Placeholder for ChainLink VRF random number
+        address[] memory playersList = sUniquePlayersList;
+        uint256 sPlayersLength = playersList.length;
+        uint256 cumulativeTickets = 0;
+
+        for (uint256 i = 0; i < sPlayersLength;) {
+            address currentPlayer = playersList[i];
+            uint256 playerTickets = sPlayers[currentPlayer];
+            if (randomNumber < cumulativeTickets + playerTickets) {
+                // Found the winner
+                // Transfer the raffle pool to the winner
+                return currentPlayer;
+            }
+            unchecked {
+                i++;
+            }
+            cumulativeTickets += playerTickets;
         }
     }
 
@@ -106,5 +138,21 @@ contract Raffle {
 
     function getNumberOfTickets(address player) external view returns (uint256) {
         return sPlayers[player];
+    }
+
+    function getMinimumPlayers() external view returns (uint256) {
+        return I_MINIMUM_PLAYERS;
+    }
+
+    function getRaffleDuration() external view returns (uint256) {
+        return I_RAFFLE_DURATION;
+    }
+
+    function getRaffleStartTime() external view returns (uint256) {
+        return sRaffleStartTime;
+    }
+
+    function getTotalTickets() external view returns (uint256) {
+        return sTotalTickets;
     }
 }
