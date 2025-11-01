@@ -12,7 +12,7 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
  * @notice  This contract is for creating a simple raffle
  */
 
-contract Raffle {
+contract Raffle is VRFConsumerBaseV2Plus {
     /*
         The two main functions that our smart contract will revolve around are:
         Entering the raffle and then picking the winner. Everything else will
@@ -26,10 +26,28 @@ contract Raffle {
     error Raffle__NotEnoughMoneyToEnterRaffle();
     error Raffle__RaffleDurationNotMet();
     error Raffle__NotEnoughPlayersToPickWinner();
+    error Raffle__TransferFailed();
+
+    /**
+     * Type Declarations
+     */
+
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
 
     /**
      * State Variables
      */
+
+    // @dev ChainLink VRF variables
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint8 private constant NUM_WORDS = 1;
+    bool private constant ENABLE_NATIVE_PAYMENT = false; // false -> LINK payment, true -> native token paymen t
+    uint32 private immutable I_CALLBACK_GAS_LIMIT;
+    bytes32 private immutable I_KEY_HASH;
+    uint256 private immutable I_SUBSCRIPTION_ID;
 
     // @dev Entrance fee for the raffle
     uint256 private immutable I_ENTRANCE_FEE;
@@ -39,9 +57,6 @@ contract Raffle {
 
     // @dev Minimum number of players required to pick a winner
     uint256 private immutable I_MINIMUM_PLAYERS;
-
-    // @dev Raffle pool amount
-    uint256 private sRafflePool;
 
     // @dev Mapping of a player to their number of tickets
     mapping(address => uint256) private sPlayers;
@@ -58,6 +73,12 @@ contract Raffle {
     // @dev Raffle start time
     uint256 private sRaffleStartTime;
 
+    // @dev Recent winner address
+    address private sRecentWinner;
+
+    // @dev Store the current state of the raffle
+    RaffleState private sRaffleState;
+
     /**
      * Events
      */
@@ -69,11 +90,33 @@ contract Raffle {
      * Functions
      */
 
-    constructor(uint256 entranceFee, uint256 raffleDuration, uint256 minimumPlayers) {
+    constructor(
+        uint256 entranceFee,
+        uint256 raffleDuration,
+        uint256 minimumPlayers,
+        address vrfCoordinator,
+        bytes32 keyHash,
+        uint256 subscriptionId,
+        uint32 callbackGasLimit
+    ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         I_ENTRANCE_FEE = entranceFee;
         I_RAFFLE_DURATION = raffleDuration;
         I_MINIMUM_PLAYERS = minimumPlayers;
         sRaffleStartTime = block.timestamp;
+        I_KEY_HASH = keyHash;
+        I_SUBSCRIPTION_ID = subscriptionId;
+        I_CALLBACK_GAS_LIMIT = callbackGasLimit;
+        sRaffleState = RaffleState.OPEN;
+    }
+
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+        address payable winner = payable(sUniquePlayersList[randomWords[0] % sUniquePlayersList.length]);
+        sRecentWinner = winner;
+        (bool success,) = winner.call{value: address(this).balance}("");
+
+        if (!success) {
+            revert Raffle__TransferFailed();
+        }
     }
 
     // @dev Function to enter the raffle
@@ -84,7 +127,6 @@ contract Raffle {
 
         uint256 raffleTickets = msg.value / I_ENTRANCE_FEE;
 
-        sRafflePool += msg.value;
         sPlayers[msg.sender] += raffleTickets;
         sTotalTickets += raffleTickets;
 
@@ -107,19 +149,19 @@ contract Raffle {
             revert Raffle__RaffleDurationNotMet();
         }
 
-        // // Taken from ChainLink VRF v2.5 docs
-        // requestId = s_vrfCoordinator.requestRandomWords(
-        //     VRFV2PlusClient.RandomWordsRequest({
-        //         keyHash: keyHash,
-        //         subId: s_subscriptionId,
-        //         requestConfirmations: requestConfirmations,
-        //         callbackGasLimit: callbackGasLimit,
-        //         numWords: numWords,
-        //         extraArgs: VRFV2PlusClient._argsToBytes(
-        //             VRFV2PlusClient.ExtraArgsV1({nativePayment: enableNativePayment})
-        //         )
-        //     })
-        // );
+        // Taken from ChainLink VRF v2.5 docs
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: I_KEY_HASH, // Gas lane that the oracle uses for this request
+                subId: I_SUBSCRIPTION_ID, // Subscription ID that this contract uses
+                requestConfirmations: REQUEST_CONFIRMATIONS,
+                callbackGasLimit: I_CALLBACK_GAS_LIMIT,
+                numWords: NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: ENABLE_NATIVE_PAYMENT})
+                )
+            })
+        );
 
         uint256 randomNumber = 3; // Placeholder for ChainLink VRF random number
         address[] memory playersList = sUniquePlayersList;
@@ -150,7 +192,7 @@ contract Raffle {
     }
 
     function getRafflePool() external view returns (uint256) {
-        return sRafflePool;
+        return address(this).balance;
     }
 
     function getNumberOfTickets(address player) external view returns (uint256) {
