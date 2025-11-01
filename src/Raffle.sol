@@ -10,10 +10,6 @@ pragma solidity ^0.8.30;
  */
 
 contract Raffle {
-    /**
-     * Errors
-     */
-    error Raffle__NotEnoughMoneyToEnterRaffle();
 
     /*
         The two main functions that our smart contract will revolve around are:
@@ -21,7 +17,23 @@ contract Raffle {
         be built around these.
     */
 
+    /**
+     * Errors
+     */
+    error Raffle__NotEnoughMoneyToEnterRaffle();
+
+
+    /**
+     * State Variables
+     */
     uint256 private immutable I_ENTRANCE_FEE;
+    uint256 private sRafflePool;
+    mapping(address => uint256) private sPlayers; // address => number of tickets
+
+    /**
+     * Events
+     */
+    event RaffleEntered(address indexed player, uint256 tickets);
 
     constructor(uint256 entranceFee) {
         I_ENTRANCE_FEE = entranceFee;
@@ -31,9 +43,15 @@ contract Raffle {
         if (msg.value < I_ENTRANCE_FEE) {
             revert Raffle__NotEnoughMoneyToEnterRaffle();
         }
+
+        uint256 raffleTickets = msg.value / I_ENTRANCE_FEE;
+
+        sRafflePool += msg.value;
+        sPlayers[msg.sender] = raffleTickets;
+        emit RaffleEntered(msg.sender, raffleTickets);
     }
 
-    function pickWinner() public {}
+    // function pickWinner() public {}
 
     /**
      * Getter functions
@@ -41,5 +59,13 @@ contract Raffle {
 
     function getEntranceFee() external view returns (uint256) {
         return I_ENTRANCE_FEE;
+    }
+
+    function getRafflePool() external view returns (uint256) {
+        return sRafflePool;
+    }
+
+    function getNumberOfTickets(address player) external view returns (uint256) {
+        return sPlayers[player];
     }
 }
