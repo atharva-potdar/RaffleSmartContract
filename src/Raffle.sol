@@ -26,20 +26,32 @@ contract Raffle {
     /**
      * State Variables
      */
+    // @dev Entrance fee for the raffle
     uint256 private immutable I_ENTRANCE_FEE;
+    // @dev Duration of the raffle in seconds
+    uint256 private immutable I_RAFFLE_DURATION;
+    // @dev Raffle pool amount
     uint256 private sRafflePool;
-    mapping(address => uint256) private sPlayers; // address => number of tickets
+    // @dev Mapping of a player to their number of tickets
+    mapping(address => uint256) private sPlayers;
+    // @dev List of players weighted according to their tickets
     address[] private sWeightedPlayersList;
 
     /**
      * Events
      */
+    // @dev Emitted when a player enters the raffle
     event RaffleEntered(address indexed player, uint256 tickets);
 
-    constructor(uint256 entranceFee) {
+    constructor(uint256 entranceFee, uint256 raffleDuration) {
         I_ENTRANCE_FEE = entranceFee;
+        I_RAFFLE_DURATION = raffleDuration;
     }
 
+    /**
+     * Functions
+     */
+    // @dev Function to enter the raffle
     function enterRaffle() external payable {
         if (msg.value < I_ENTRANCE_FEE) {
             revert Raffle__NotEnoughMoneyToEnterRaffle();
@@ -56,6 +68,7 @@ contract Raffle {
         emit RaffleEntered(msg.sender, raffleTickets);
     }
 
+    // @dev Function to pick a winner
     function pickWinner() external {
         // I'll initially leave tickets for later
 
@@ -64,7 +77,6 @@ contract Raffle {
     /**
      * Getter functions
      */
-
     function getEntranceFee() external view returns (uint256) {
         return I_ENTRANCE_FEE;
     }
