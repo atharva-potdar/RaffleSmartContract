@@ -8,10 +8,12 @@ import {Raffle} from "../src/Raffle.sol";
 contract RaffleTest is Test {
     Raffle private raffle;
     uint256 private constant ENTRANCE_FEE = 0.001 ether;
+    uint256 private constant RAFFLE_DURATION = 7 days;
+    uint256 private constant MINIMUM_PLAYERS = 5;
     address private immutable player = makeAddr("ificouldsmokefearaway");
 
     function setUp() public {
-        raffle = new Raffle(ENTRANCE_FEE);
+        raffle = new Raffle(ENTRANCE_FEE, RAFFLE_DURATION, MINIMUM_PLAYERS);
     }
 
     function testGetEntranceFee() public view {
