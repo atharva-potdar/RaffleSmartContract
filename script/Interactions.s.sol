@@ -5,6 +5,7 @@ pragma solidity ^0.8.30;
 import {Script, console} from "forge-std/Script.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {LinkToken} from "test/mocks/LinkToken.sol";
 
 contract CreateSubscription is Script {
     function run() public {
@@ -44,5 +45,29 @@ contract FundSubscription is Script {
         HelperConfig helperConfig = new HelperConfig();
         address vrfCoordinator = helperConfig.getConfig().vrfCoordinator;
         uint256 subscriptionId = helperConfig.getConfig().subscriptionId; // updated before this
+        address linkToken = helperConfig.getConfig().linkToken;
+        
+        fundSubscription(vrfCoordinator, subscriptionId, linkToken);
+    }
+
+    function fundSubscription(address vrfCoordinator, uint256 subscriptionId, address linkToken) public {
+        console.log("Funding subscription %d on VRF Coordinator: %d with Chain ID: %d", subscriptionId, vrfCoordinator, block.chainid);
+        
+        if (block.chainid == 31337) { // Anvil - fund via direct method
+            vm.startBroadcast();
+            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, FUND_AMOUNT);
+            vm.stopBroadcast();
+        } else {
+            // For testnets/mainnet, use LINK token to fund
+            vm.startBroadcast();
+            LinkToken(linkToken).transferAndCall(
+                vrfCoordinator,
+                FUND_AMOUNT,
+                abi.encode(subscriptionId)
+            );
+            vm.stopBroadcast();
+        }
+
+        console.log("Subscription funded with %d LINK", FUND_AMOUNT);
     }
 }
