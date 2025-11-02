@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
 /**
  * @author  atharva-potdar
@@ -12,7 +13,7 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
  * @notice  This contract is for creating a simple raffle
  */
 
-contract Raffle is VRFConsumerBaseV2Plus {
+contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     /*
         The two main functions that our smart contract will revolve around are:
         Entering the raffle and then picking the winner. Everything else will
@@ -41,6 +42,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__NotEnoughPlayersToPickWinner();
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOpen();
+    error Raffle__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
 
     /**
      * Type Declarations
@@ -148,8 +150,45 @@ contract Raffle is VRFConsumerBaseV2Plus {
         emit RaffleEntered(msg.sender, raffleTickets);
     }
 
+    /**
+     * @notice  Function that Chainlink nodes call to see if winner needs to be picked
+     * @dev     To trigger this,
+     *          1. Raffle duration should be met,
+     *          2. Minimum players should be met,
+     *          3. Raffle should be open,
+     *          4. Contract should have balance,
+     *          5. (implicit) subscription should be funded
+     * @param                - ignored
+     * @return  upkeepNeeded - true if winner needs to be picked
+     * @return  bytes        - ignored
+     */
+    function checkUpkeep(
+        bytes memory /* checkData */
+    )
+        public
+        view
+        override
+        returns (
+            bool upkeepNeeded,
+            bytes memory /* performData */
+        )
+    {
+        upkeepNeeded = (block.timestamp - sRaffleStartTime >= I_RAFFLE_DURATION)
+            && (sUniquePlayersList.length >= I_MINIMUM_PLAYERS) && (sRaffleState == RaffleState.OPEN)
+            && (address(this).balance > 0);
+    }
+
     // @dev Function to pick a winner
-    function pickWinner() external returns (address) {
+    function performUpkeep(
+        bytes calldata /* performData */
+    )
+        external
+        override
+    {
+        (bool upkeepNeeded,) = checkUpkeep("");
+        if (!upkeepNeeded) {
+            revert Raffle__UpkeepNotNeeded(address(this).balance, sUniquePlayersList.length, uint256(sRaffleState));
+        }
         uint256 totalRaffleTickets = sTotalTickets;
 
         if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
@@ -186,7 +225,6 @@ contract Raffle is VRFConsumerBaseV2Plus {
             if (randomNumber < cumulativeTickets + playerTickets) {
                 // Found the winner
                 // Transfer the raffle pool to the winner
-                return currentPlayer;
             }
             unchecked {
                 i++;
@@ -246,5 +284,17 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     function getTotalTickets() external view returns (uint256) {
         return sTotalTickets;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return sRaffleState;
+    }
+
+    function getRaffleEntrant(uint256 index) external view returns (address) {
+        return sUniquePlayersList[index];
+    }
+
+    function isUserInRaffle(address player) external view returns (bool) {
+        return sIsPlayerInList[player];
     }
 }
