@@ -51,7 +51,7 @@ contract LinkToken is ERC20 {
     function symbol() public pure override returns (string memory) {
         return "LINK";
     }
-    
+
     // PRIVATE
 
     function contractFallback(address _to, uint256 _value, bytes memory _data) private {

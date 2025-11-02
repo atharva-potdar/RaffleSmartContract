@@ -6,7 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
-import {CreateSubscription} from "script/Interactions.s.sol";
+import {CreateSubscription, FundSubscription, AddConsumer} from "script/Interactions.s.sol";
 
 contract DeployRaffle is Script {
     function deployContract() public returns (Raffle, HelperConfig) {
@@ -18,6 +18,9 @@ contract DeployRaffle is Script {
             CreateSubscription subscriptionCreator = new CreateSubscription();
             (networkConfig.subscriptionId, networkConfig.vrfCoordinator) =
                 subscriptionCreator.createSubscription(networkConfig.vrfCoordinator);
+
+            FundSubscription funder = new FundSubscription();
+            funder.fundSubscription(networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.linkToken);
         }
 
         vm.startBroadcast();
@@ -31,6 +34,12 @@ contract DeployRaffle is Script {
             networkConfig.callbackGasLimit
         );
         vm.stopBroadcast();
+
+        AddConsumer addConsumer = new AddConsumer();
+
+        // no need to broadcast since it's already in addConsumer function
+        addConsumer.addConsumer(address(raffle), networkConfig.vrfCoordinator, networkConfig.subscriptionId);
+
         return (raffle, helperConfig);
     }
 }
