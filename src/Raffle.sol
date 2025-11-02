@@ -281,6 +281,4 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     function isUserInRaffle(address player) external view returns (bool) {
         return sIsPlayerInList[player];
     }
-
-
 }

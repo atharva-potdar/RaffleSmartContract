@@ -201,7 +201,6 @@ contract RaffleTest is Test {
     }
 
     function testCheckUpkeepReturnsFalseIfNotEnoughTimePassed() public {
-
         (bool upkeepNeeded,) = raffle.checkUpkeep("");
         assertEq(upkeepNeeded, false);
 
