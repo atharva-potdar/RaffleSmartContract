@@ -9,6 +9,11 @@ import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VR
 import {CreateSubscription, FundSubscription, AddConsumer} from "script/Interactions.s.sol";
 
 contract DeployRaffle is Script {
+    function run() public returns (Raffle, HelperConfig) {
+        (Raffle raffle, HelperConfig helperConfig) = deployContract();
+        return (raffle, helperConfig);
+    }
+
     function deployContract() public returns (Raffle, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory networkConfig = helperConfig.getConfig();

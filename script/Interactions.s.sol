@@ -9,6 +9,7 @@ import {LinkToken} from "test/mocks/LinkToken.sol";
 import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
 
 contract CreateSubscription is Script {
+    // TODO: Write tests for this script if needed
     function run() public {
         createSubscriptionUsingConfig();
     }
@@ -37,7 +38,10 @@ contract CreateSubscription is Script {
 contract FundSubscription is Script {
     uint256 constant FUND_AMOUNT = 5 ether;
 
-    function run() public {}
+    // TODO: Write tests for this script if needed
+    function run() public {
+        fundSubscriptionUsingConfig();
+    }
 
     function fundSubscriptionUsingConfig() public {
         HelperConfig helperConfig = new HelperConfig();
@@ -73,6 +77,7 @@ contract FundSubscription is Script {
 }
 
 contract AddConsumer is Script {
+    // TODO: Write tests for this script if needed
     function addConsumerUsingConfig(address contractToAddToVrf) public {
         HelperConfig helperConfig = new HelperConfig();
         address vrfCoordinator = helperConfig.getConfig().vrfCoordinator;

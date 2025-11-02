@@ -191,12 +191,13 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         }
         uint256 totalRaffleTickets = sTotalTickets;
 
-        if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
-            revert Raffle__NotEnoughPlayersToPickWinner();
-        }
-        if (block.timestamp - sRaffleStartTime < I_RAFFLE_DURATION) {
-            revert Raffle__RaffleDurationNotMet();
-        }
+        // Checks - moved to checkUpkeep
+        // if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
+        //     revert Raffle__NotEnoughPlayersToPickWinner();
+        // }
+        // if (block.timestamp - sRaffleStartTime < I_RAFFLE_DURATION) {
+        //     revert Raffle__RaffleDurationNotMet();
+        // }
 
         sRaffleState = RaffleState.CALCULATING;
 
@@ -213,26 +214,9 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 )
             })
         );
-
-        uint256 randomNumber = 3; // Placeholder for ChainLink VRF random number
-        address[] memory playersList = sUniquePlayersList;
-        uint256 sPlayersLength = playersList.length;
-        uint256 cumulativeTickets = 0;
-
-        for (uint256 i = 0; i < sPlayersLength;) {
-            address currentPlayer = playersList[i];
-            uint256 playerTickets = sPlayers[currentPlayer];
-            if (randomNumber < cumulativeTickets + playerTickets) {
-                // Found the winner
-                // Transfer the raffle pool to the winner
-            }
-            unchecked {
-                i++;
-            }
-            cumulativeTickets += playerTickets;
-        }
     }
 
+    // TODO: Write tests for this function
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         address[] memory playersList = sUniquePlayersList;
         address payable winner = payable(playersList[randomWords[0] % playersList.length]);
@@ -297,4 +281,6 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     function isUserInRaffle(address player) external view returns (bool) {
         return sIsPlayerInList[player];
     }
+
+
 }

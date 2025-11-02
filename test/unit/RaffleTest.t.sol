@@ -27,7 +27,7 @@ contract RaffleTest is Test {
 
     function setUp() public {
         DeployRaffle deployer = new DeployRaffle();
-        (raffle, helperConfig) = deployer.deployContract();
+        (raffle, helperConfig) = deployer.run();
         blockStartTime = block.timestamp;
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
         ENTRANCE_FEE = config.entranceFee;
@@ -37,6 +37,15 @@ contract RaffleTest is Test {
         keyHash = config.keyHash;
         subscriptionId = config.subscriptionId;
         callbackGasLimit = config.callbackGasLimit;
+    }
+
+    function testDeployerWorksCorrectly() public {
+        (Raffle deployedRaffle, HelperConfig deployedConfig) = new DeployRaffle().deployContract();
+        assert(address(deployedRaffle) != address(0));
+        HelperConfig.NetworkConfig memory config = deployedConfig.getConfig();
+        assertEq(config.entranceFee, ENTRANCE_FEE);
+        assertEq(config.raffleDuration, RAFFLE_DURATION);
+        assertEq(config.minimumPlayers, MINIMUM_PLAYERS);
     }
 
     function testHelperConfigReturnsSepoliaEthConfig() public {
@@ -191,7 +200,11 @@ contract RaffleTest is Test {
         raffle.performUpkeep("");
     }
 
-    function testCheckUpkeepReturnsFalseUnderDifferentConditions() public {
+    function testCheckUpkeepReturnsFalseIfNotEnoughTimePassed() public {
+
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        assertEq(upkeepNeeded, false);
+
         // Arrange: Enter enough players
         for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
             address player = address(uint160(i + 1));
@@ -201,7 +214,7 @@ contract RaffleTest is Test {
         }
 
         // Act & Assert 1: Time has not passed, should be false
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (upkeepNeeded,) = raffle.checkUpkeep("");
         assertEq(upkeepNeeded, false);
 
         // Arrange 2: Advance time
@@ -210,12 +223,31 @@ contract RaffleTest is Test {
         vm.roll(block.number + 1);
 
         // Act & Assert 2: Now it should be true
-        (bool upkeepNeeded2,) = raffle.checkUpkeep("");
-        assertEq(upkeepNeeded2, true);
+        (upkeepNeeded,) = raffle.checkUpkeep("");
+        assertEq(upkeepNeeded, true);
     }
 
     // big boi test
-    function testPickWinnerAndResetRaffle() public {}
+    function testPerformUpkeepSwitchesStatusToCalculating() public {
+        // Arrange: Enter enough players
+        for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
+            address player = address(uint160(i + 1));
+            vm.deal(player, ENTRANCE_FEE);
+            vm.prank(player);
+            raffle.enterRaffle{value: ENTRANCE_FEE}();
+        }
+
+        // Arrange 2: Advance time
+        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
+        // Also roll block number to simulate a realistic passage of time.
+        vm.roll(block.number + 1);
+
+        // Act
+        raffle.performUpkeep("");
+
+        // Assert: Raffle state is now CALCULATING
+        assertEq(uint256(raffle.getRaffleState()), uint256(Raffle.RaffleState.CALCULATING));
+    }
 
     /**
      *  Relevant functions:
