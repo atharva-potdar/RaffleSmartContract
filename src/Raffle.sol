@@ -102,7 +102,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     // @dev Emitted when a player enters the raffle
     event RaffleEntered(address indexed player, uint256 tickets);
 
+    // @dev Emitted when a winner is picked
     event WinnerPicked(address indexed winner, uint256 amountWon);
+
+    // @dev Emitted when a raffle winner is requested
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     /**
      * Functions
@@ -214,6 +218,9 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 )
             })
         );
+
+        // Redundant because VRFV2Plus emits this event internally, but added for clarity in testing
+        emit RequestedRaffleWinner(requestId);
     }
 
     // TODO: Write tests for this function

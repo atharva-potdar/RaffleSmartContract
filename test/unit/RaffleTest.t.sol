@@ -7,6 +7,7 @@ import {Raffle} from "src/Raffle.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 contract RaffleTest is Test {
     uint256 private blockStartTime;
@@ -24,6 +25,24 @@ contract RaffleTest is Test {
     uint256 private constant INITIAL_BALANCE = 10 ether;
     address private immutable PLAYER = makeAddr("ificouldsmokefearaway");
     address private immutable PLAYER2 = makeAddr("iwouldrollthatmfup");
+
+    modifier raffleEnteredByMinimumPlayers() {
+        // 1. Have enough players enter the raffle.
+        // Using a loop makes it robust to changes in MINIMUM_PLAYERS.
+        for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
+            address player = address(uint160(i + 1)); // Create unique player addresses
+            vm.deal(player, ENTRANCE_FEE);
+            vm.prank(player);
+            raffle.enterRaffle{value: ENTRANCE_FEE}();
+        }
+
+        // 2. Advance time to meet the duration requirement.
+        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
+
+        // Also roll block number to simulate a realistic passage of time.
+        vm.roll(block.number + 1);
+        _;
+    }
 
     function setUp() public {
         DeployRaffle deployer = new DeployRaffle();
@@ -91,7 +110,7 @@ contract RaffleTest is Test {
     }
 
     function testRaffleStartsInOpenState() public view {
-        assertEq(uint256(raffle.getRaffleState()), uint256(Raffle.RaffleState.OPEN));
+        assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
     }
 
     function testRaffleStartTime() public view {
@@ -116,23 +135,8 @@ contract RaffleTest is Test {
     }
 
     // How do I implement this?
-    function testEnterRevertsIfWinnerCalculating() public {
+    function testEnterRevertsIfWinnerCalculating() public raffleEnteredByMinimumPlayers {
         // Arrange: Set up the conditions to put the raffle in CALCULATING state.
-
-        // 1. Have enough players enter the raffle.
-        // Using a loop makes it robust to changes in MINIMUM_PLAYERS.
-        for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
-            address player = address(uint160(i + 1)); // Create unique player addresses
-            vm.deal(player, ENTRANCE_FEE);
-            vm.prank(player);
-            raffle.enterRaffle{value: ENTRANCE_FEE}();
-        }
-
-        // 2. Advance time to meet the duration requirement.
-        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
-
-        // Also roll block number to simulate a realistic passage of time.
-        vm.roll(block.number + 1);
 
         // 3. Call performUpkeep to change the state to CALCULATING.
         // checkUpkeep should now return true.
@@ -201,6 +205,8 @@ contract RaffleTest is Test {
     }
 
     function testCheckUpkeepReturnsFalseIfNotEnoughTimePassed() public {
+        // Not using modifier here since I need to test time condition specifically.
+
         (bool upkeepNeeded,) = raffle.checkUpkeep("");
         assertEq(upkeepNeeded, false);
 
@@ -226,26 +232,39 @@ contract RaffleTest is Test {
         assertEq(upkeepNeeded, true);
     }
 
-    // big boi test
-    function testPerformUpkeepSwitchesStatusToCalculating() public {
-        // Arrange: Enter enough players
-        for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
-            address player = address(uint160(i + 1));
-            vm.deal(player, ENTRANCE_FEE);
-            vm.prank(player);
-            raffle.enterRaffle{value: ENTRANCE_FEE}();
-        }
-
-        // Arrange 2: Advance time
-        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
-        // Also roll block number to simulate a realistic passage of time.
-        vm.roll(block.number + 1);
-
+    function testPerformUpkeepSwitchesStatusToCalculating() public raffleEnteredByMinimumPlayers {
         // Act
         raffle.performUpkeep("");
 
         // Assert: Raffle state is now CALCULATING
-        assertEq(uint256(raffle.getRaffleState()), uint256(Raffle.RaffleState.CALCULATING));
+        assert(raffle.getRaffleState() == Raffle.RaffleState.CALCULATING);
+    }
+
+    function testPerformUpkeepEmitsRequestedRaffleWinnerEvent() public raffleEnteredByMinimumPlayers {
+        vm.recordLogs();
+        raffle.performUpkeep("");
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        // First log is from VrfCorordinator
+        // 0th topic is hash of the event signature
+        // 1st topic is the indexed requestId
+        bytes32 requestedId = entries[1].topics[1];
+
+        assertEq(entries[1].emitter, address(raffle));
+        assert(uint256(requestedId) > 0);
+        assert(raffle.getRaffleState() == Raffle.RaffleState.CALCULATING);
+    }
+
+    // The fun part starts here...
+    // fulfillRandomWords!!!
+
+    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId)
+        public
+        raffleEnteredByMinimumPlayers
+    {
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(randomRequestId, address(raffle));
     }
 
     /**
