@@ -108,6 +108,9 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     // @dev Emitted when a raffle winner is requested
     event RequestedRaffleWinner(uint256 indexed requestId);
 
+    // @dev Emitted when a transfer to the winner fails
+    event TransferFailed(address indexed winner, uint256 amount);
+
     /**
      * Functions
      */
@@ -239,8 +242,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         sRaffleStartTime = block.timestamp;
         emit WinnerPicked(winner, prizeAmount);
 
+        // How can we make this fail in tests?
         (bool success,) = winner.call{value: prizeAmount}("");
         if (!success) {
+            // This revert doesn't give out the error when testing, but we can emit an event
+            emit TransferFailed(winner, prizeAmount);
             revert Raffle__TransferFailed();
         }
     }

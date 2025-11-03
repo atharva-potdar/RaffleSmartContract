@@ -9,6 +9,11 @@ import {HelperConfig} from "script/HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {Vm} from "forge-std/Vm.sol";
 
+contract IOnlyRejectEther {
+    error IOnlyRejectEther__NoThanks();
+    receive() external payable { revert IOnlyRejectEther__NoThanks(); }
+}
+
 contract RaffleTest is Test {
     uint256 private blockStartTime;
     Raffle private raffle;
@@ -58,6 +63,10 @@ contract RaffleTest is Test {
         callbackGasLimit = config.callbackGasLimit;
     }
 
+    /**
+     * DeployConfig Tests
+     */
+
     function testDeployerWorksCorrectly() public {
         (Raffle deployedRaffle, HelperConfig deployedConfig) = new DeployRaffle().deployContract();
         assert(address(deployedRaffle) != address(0));
@@ -66,6 +75,10 @@ contract RaffleTest is Test {
         assertEq(config.raffleDuration, RAFFLE_DURATION);
         assertEq(config.minimumPlayers, MINIMUM_PLAYERS);
     }
+
+    /**
+     * HelperConfig Tests
+     */
 
     function testHelperConfigReturnsSepoliaEthConfig() public {
         vm.chainId(11155111);
@@ -109,6 +122,10 @@ contract RaffleTest is Test {
         assertEq(currentConfig.callbackGasLimit, expectedConfig.callbackGasLimit);
     }
 
+    /**
+     * Raffle State Tests
+     */
+
     function testRaffleStartsInOpenState() public view {
         assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
     }
@@ -128,6 +145,10 @@ contract RaffleTest is Test {
     function testGetRaffleDuration() public view {
         assertEq(raffle.getRaffleDuration(), RAFFLE_DURATION);
     }
+
+    /**
+     * Raffle.enterRaffle() Tests
+     */
 
     function testEnterRevertsIfNotEnoughEth() public {
         vm.expectRevert(Raffle.Raffle__NotEnoughMoneyToEnterRaffle.selector);
@@ -184,6 +205,10 @@ contract RaffleTest is Test {
         emit Raffle.RaffleEntered(PLAYER, 1);
         raffle.enterRaffle{value: ENTRANCE_FEE}();
     }
+
+    /**
+     * Raffle.checkUpkeep() and Raffle.performUpkeep() Tests
+     */
 
     function testRevertWhenPerformUpkeepNotNeeded() public {
         // Arrange: Enter one player, but don't meet time or player minimums.
@@ -259,6 +284,10 @@ contract RaffleTest is Test {
     // The fun part starts here...
     // fulfillRandomWords!!!
 
+    /**
+     * Raffle.fulfillRandomWords() Tests
+     */
+
     function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId)
         public
         raffleEnteredByMinimumPlayers
@@ -268,6 +297,7 @@ contract RaffleTest is Test {
     }
 
     function testFulfillRandomWordsPicksAWinnerResetsRaffleAndSendsMoney() public raffleEnteredByMinimumPlayers {
+
         // Arrange
         uint256 startingTimestamp = raffle.getRaffleStartTime();
 
@@ -297,6 +327,44 @@ contract RaffleTest is Test {
         assert(raffleState == Raffle.RaffleState.OPEN);
         assertEq(winnerBalance, initialWinnerBalance + prize);
         assertGt(endingTimestamp, startingTimestamp);
+    }
+
+    function testFulfillRandomWordsRevertsIfTransferFails() public {
+        // Arrange
+        // 1. Create a contract that will reject Ether payments.
+        IOnlyRejectEther winnerContract = new IOnlyRejectEther();
+        address winnerAddress = address(winnerContract);
+
+        // 3. Fund and enter the raffle as the rejecting contract.
+        vm.deal(address(0), ENTRANCE_FEE); // Fund the contract to enter the raffle
+        vm.prank(address(0));
+        raffle.enterRaffle{value: ENTRANCE_FEE}();
+
+        vm.deal(address(1), ENTRANCE_FEE); // Fund another player
+        vm.prank(address(1));
+        raffle.enterRaffle{value: ENTRANCE_FEE}();
+
+        // Our "Determistic" mock always picks the last entrant
+        vm.deal(winnerAddress, ENTRANCE_FEE);
+        vm.prank(winnerAddress);
+        raffle.enterRaffle{value: ENTRANCE_FEE}();
+
+        // 4. Advance time to allow for winner selection.
+        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
+        vm.roll(block.number + 1);
+
+        // Act
+        // 5. Request a winner from the VRF coordinator.
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        // Assert
+        // 6. Fulfill the request and expect the `Raffle__TransferFailed` error.
+        vm.expectEmit(true, false, false, true, address(raffle));
+        emit Raffle.TransferFailed(winnerAddress, ENTRANCE_FEE * 3);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(uint256(requestId), address(raffle));
     }
 
     /**
