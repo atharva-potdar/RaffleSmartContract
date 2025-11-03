@@ -63,7 +63,9 @@ contract FundSubscription is Script {
         if (block.chainid == 31337) {
             // Anvil - fund via direct method
             vm.startBroadcast();
-            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, FUND_AMOUNT);
+
+            // Insufficient balance in tests, so increased price
+            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subscriptionId, FUND_AMOUNT * 300);
             vm.stopBroadcast();
         } else {
             // For testnets/mainnet, use LINK token to fund

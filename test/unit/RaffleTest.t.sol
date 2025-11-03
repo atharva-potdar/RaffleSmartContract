@@ -267,6 +267,38 @@ contract RaffleTest is Test {
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(randomRequestId, address(raffle));
     }
 
+    function testFulfillRandomWordsPicksAWinnerResetsRaffleAndSendsMoney() public raffleEnteredByMinimumPlayers {
+        // Arrange
+        uint256 startingTimestamp = raffle.getRaffleStartTime();
+
+        // Why is address(3) the winner?
+        // The video had address(1) as winner.
+        address expectedWinner = address(3);
+        uint256 initialWinnerBalance = expectedWinner.balance;
+
+        // Act
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestedId = entries[1].topics[1];
+
+        // Fails with Insufficient Balance
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(uint256(requestedId), address(raffle));
+
+        // Assert
+        address recentWinner = raffle.getRecentWinner();
+        Raffle.RaffleState raffleState = raffle.getRaffleState();
+        uint256 winnerBalance = address(recentWinner).balance;
+        uint256 endingTimestamp = raffle.getRaffleStartTime();
+        uint256 prize = ENTRANCE_FEE * MINIMUM_PLAYERS;
+        uint256 rafflePool = raffle.getRafflePool();
+
+        assertEq(recentWinner, expectedWinner);
+        assert(raffleState == Raffle.RaffleState.OPEN);
+        assertEq(winnerBalance, initialWinnerBalance + prize);
+        assertGt(endingTimestamp, startingTimestamp);
+    }
+
     /**
      *  Relevant functions:
      *  function enterRaffle() public payable {
