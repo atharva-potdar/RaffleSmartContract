@@ -24,7 +24,8 @@ contract CreateSubscription is Script {
     }
 
     function createSubscription(address vrfCoordinator, address contact) public returns (uint256, address) {
-        console.log("Creating subscription on VRF Coordinator: %p with Chain ID: ", vrfCoordinator, block.chainid);
+        console.log("Creating subscription on VRF Coordinator: ", vrfCoordinator);
+        console.log("On Chain ID: ", block.chainid);
         vm.startBroadcast(contact);
         uint256 subId = VRFCoordinatorV2_5Mock(vrfCoordinator).createSubscription();
         vm.stopBroadcast();
@@ -55,12 +56,9 @@ contract FundSubscription is Script {
     function fundSubscription(address vrfCoordinator, uint256 subscriptionId, address linkToken, address contact)
         public
     {
-        console.log(
-            "Funding subscription %d on VRF Coordinator: %d with Chain ID: %d",
-            subscriptionId,
-            vrfCoordinator,
-            block.chainid
-        );
+        console.log("Funding subscription on VRF Coordinator: ", vrfCoordinator);
+        console.log("On Chain ID: ", block.chainid);
+        console.log("Subscription ID: ", subscriptionId);
 
         if (block.chainid == 31337) {
             // Anvil - fund via direct method
@@ -98,8 +96,10 @@ contract AddConsumer is Script {
     function addConsumer(address contractToAddToVrf, address vrfCoordinator, uint256 subscriptionId, address contact)
         public
     {
-        console.log("Adding consumer contract %p to VRF Subscription %d", contractToAddToVrf, subscriptionId);
-        console.log("On VRF Coordinator: %p with Chain ID: %d", vrfCoordinator, block.chainid);
+        console.log("Adding consumer: ", contractToAddToVrf);
+        console.log("To subscription ID: %d", subscriptionId);
+        console.log("On Chain ID: ", block.chainid);
+        console.log("VRF Coordinator: ", vrfCoordinator);
 
         vm.startBroadcast(contact);
         VRFCoordinatorV2_5Mock(vrfCoordinator).addConsumer(subscriptionId, contractToAddToVrf);
