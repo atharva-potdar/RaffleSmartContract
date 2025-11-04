@@ -228,7 +228,14 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     }
 
     // TODO: Write tests for this function
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
+    function fulfillRandomWords(
+        uint256,
+        /* requestId */
+        uint256[] calldata randomWords
+    )
+        internal
+        override
+    {
         address[] memory playersList = sUniquePlayersList;
         address payable winner = payable(playersList[randomWords[0] % playersList.length]);
         sRecentWinner = winner;

@@ -11,7 +11,10 @@ import {Vm} from "forge-std/Vm.sol";
 
 contract IOnlyRejectEther {
     error IOnlyRejectEther__NoThanks();
-    receive() external payable { revert IOnlyRejectEther__NoThanks(); }
+
+    receive() external payable {
+        revert IOnlyRejectEther__NoThanks();
+    }
 }
 
 contract RaffleTest is Test {
@@ -156,6 +159,7 @@ contract RaffleTest is Test {
     }
 
     // How do I implement this?
+    // Fails on forked ARB_SEP - InvalidFEOpcode
     function testEnterRevertsIfWinnerCalculating() public raffleEnteredByMinimumPlayers {
         // Arrange: Set up the conditions to put the raffle in CALCULATING state.
 
@@ -257,6 +261,7 @@ contract RaffleTest is Test {
         assertEq(upkeepNeeded, true);
     }
 
+    // Fails on forked ARB_SEP - InvalidFEOpcode
     function testPerformUpkeepSwitchesStatusToCalculating() public raffleEnteredByMinimumPlayers {
         // Act
         raffle.performUpkeep("");
@@ -265,6 +270,7 @@ contract RaffleTest is Test {
         assert(raffle.getRaffleState() == Raffle.RaffleState.CALCULATING);
     }
 
+    // Fails on forked ARB_SEP - InvalidFEOpcode
     function testPerformUpkeepEmitsRequestedRaffleWinnerEvent() public raffleEnteredByMinimumPlayers {
         vm.recordLogs();
         raffle.performUpkeep("");
@@ -288,6 +294,8 @@ contract RaffleTest is Test {
      * Raffle.fulfillRandomWords() Tests
      */
 
+    // Fails on forked ARB_SEP - "reverted but without data"
+    // Fails on forked ETH_SEP - "reverted but without data"
     function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId)
         public
         raffleEnteredByMinimumPlayers
@@ -296,8 +304,9 @@ contract RaffleTest is Test {
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(randomRequestId, address(raffle));
     }
 
+    // Fails on forked ARB_SEP - InvalidFEOpcode
+    // Fails on forked ETH_SEP - unrecognized function selector 0x808974ff for contract 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, which has no fallback function.
     function testFulfillRandomWordsPicksAWinnerResetsRaffleAndSendsMoney() public raffleEnteredByMinimumPlayers {
-
         // Arrange
         uint256 startingTimestamp = raffle.getRaffleStartTime();
 
@@ -328,6 +337,8 @@ contract RaffleTest is Test {
         assertGt(endingTimestamp, startingTimestamp);
     }
 
+    // Fails on forked ARB_SEP - InvalidFEOpcode
+    // Fails on forked ETH_SEP - unrecognized function selector 0x808974ff for contract 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, which has no fallback function
     function testFulfillRandomWordsRevertsIfTransferFails() public {
         // Arrange
         // 1. Create a contract that will reject Ether payments.

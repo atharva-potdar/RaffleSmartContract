@@ -24,7 +24,12 @@ contract DeployRaffle is Script {
                 subscriptionCreator.createSubscription(networkConfig.vrfCoordinator, networkConfig.contact);
 
             FundSubscription funder = new FundSubscription();
-            funder.fundSubscription(networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.linkToken, networkConfig.contact);
+            funder.fundSubscription(
+                networkConfig.vrfCoordinator,
+                networkConfig.subscriptionId,
+                networkConfig.linkToken,
+                networkConfig.contact
+            );
         }
 
         vm.startBroadcast(networkConfig.contact);
@@ -42,7 +47,9 @@ contract DeployRaffle is Script {
         AddConsumer addConsumer = new AddConsumer();
 
         // no need to broadcast since it's already in addConsumer function
-        addConsumer.addConsumer(address(raffle), networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.contact);
+        addConsumer.addConsumer(
+            address(raffle), networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.contact
+        );
 
         return (raffle, helperConfig);
     }
