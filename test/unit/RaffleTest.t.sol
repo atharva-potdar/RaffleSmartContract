@@ -52,6 +52,14 @@ contract RaffleTest is Test {
         _;
     }
 
+    modifier skipFork() {
+        if (block.chainid != 31337) {
+            // 31337 is the default chain ID for Anvil
+            return;
+        }
+        _;
+    }
+
     function setUp() public {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.run();
@@ -160,7 +168,7 @@ contract RaffleTest is Test {
 
     // How do I implement this?
     // Fails on forked ARB_SEP - InvalidFEOpcode
-    function testEnterRevertsIfWinnerCalculating() public raffleEnteredByMinimumPlayers {
+    function testEnterRevertsIfWinnerCalculating() public raffleEnteredByMinimumPlayers skipFork {
         // Arrange: Set up the conditions to put the raffle in CALCULATING state.
 
         // 3. Call performUpkeep to change the state to CALCULATING.
@@ -262,7 +270,7 @@ contract RaffleTest is Test {
     }
 
     // Fails on forked ARB_SEP - InvalidFEOpcode
-    function testPerformUpkeepSwitchesStatusToCalculating() public raffleEnteredByMinimumPlayers {
+    function testPerformUpkeepSwitchesStatusToCalculating() public raffleEnteredByMinimumPlayers skipFork {
         // Act
         raffle.performUpkeep("");
 
@@ -271,7 +279,7 @@ contract RaffleTest is Test {
     }
 
     // Fails on forked ARB_SEP - InvalidFEOpcode
-    function testPerformUpkeepEmitsRequestedRaffleWinnerEvent() public raffleEnteredByMinimumPlayers {
+    function testPerformUpkeepEmitsRequestedRaffleWinnerEvent() public raffleEnteredByMinimumPlayers skipFork {
         vm.recordLogs();
         raffle.performUpkeep("");
 
@@ -299,6 +307,7 @@ contract RaffleTest is Test {
     function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId)
         public
         raffleEnteredByMinimumPlayers
+        skipFork
     {
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(randomRequestId, address(raffle));
@@ -306,7 +315,11 @@ contract RaffleTest is Test {
 
     // Fails on forked ARB_SEP - InvalidFEOpcode
     // Fails on forked ETH_SEP - unrecognized function selector 0x808974ff for contract 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, which has no fallback function.
-    function testFulfillRandomWordsPicksAWinnerResetsRaffleAndSendsMoney() public raffleEnteredByMinimumPlayers {
+    function testFulfillRandomWordsPicksAWinnerResetsRaffleAndSendsMoney()
+        public
+        raffleEnteredByMinimumPlayers
+        skipFork
+    {
         // Arrange
         uint256 startingTimestamp = raffle.getRaffleStartTime();
 
@@ -339,7 +352,7 @@ contract RaffleTest is Test {
 
     // Fails on forked ARB_SEP - InvalidFEOpcode
     // Fails on forked ETH_SEP - unrecognized function selector 0x808974ff for contract 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, which has no fallback function
-    function testFulfillRandomWordsRevertsIfTransferFails() public {
+    function testFulfillRandomWordsRevertsIfTransferFails() public skipFork {
         // Arrange
         // 1. Create a contract that will reject Ether payments.
         IOnlyRejectEther winnerContract = new IOnlyRejectEther();

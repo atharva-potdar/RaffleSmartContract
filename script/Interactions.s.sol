@@ -24,7 +24,7 @@ contract CreateSubscription is Script {
     }
 
     function createSubscription(address vrfCoordinator, address contact) public returns (uint256, address) {
-        console.log("Creating subscription on VRF Coordinator: %d with Chain ID: ", vrfCoordinator, block.chainid);
+        console.log("Creating subscription on VRF Coordinator: %p with Chain ID: ", vrfCoordinator, block.chainid);
         vm.startBroadcast(contact);
         uint256 subId = VRFCoordinatorV2_5Mock(vrfCoordinator).createSubscription();
         vm.stopBroadcast();
@@ -98,8 +98,8 @@ contract AddConsumer is Script {
     function addConsumer(address contractToAddToVrf, address vrfCoordinator, uint256 subscriptionId, address contact)
         public
     {
-        console.log("Adding consumer contract %d to VRF Subscription %d", contractToAddToVrf, subscriptionId);
-        console.log("On VRF Coordinator: %d with Chain ID: %d", vrfCoordinator, block.chainid);
+        console.log("Adding consumer contract %p to VRF Subscription %d", contractToAddToVrf, subscriptionId);
+        console.log("On VRF Coordinator: %p with Chain ID: %d", vrfCoordinator, block.chainid);
 
         vm.startBroadcast(contact);
         VRFCoordinatorV2_5Mock(vrfCoordinator).addConsumer(subscriptionId, contractToAddToVrf);
