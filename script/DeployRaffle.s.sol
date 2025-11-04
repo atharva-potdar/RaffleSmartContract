@@ -5,7 +5,6 @@ pragma solidity ^0.8.30;
 import {Script} from "forge-std/Script.sol";
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
-import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {CreateSubscription, FundSubscription, AddConsumer} from "script/Interactions.s.sol";
 
 contract DeployRaffle is Script {
@@ -22,13 +21,13 @@ contract DeployRaffle is Script {
             // Create VRF Subscription
             CreateSubscription subscriptionCreator = new CreateSubscription();
             (networkConfig.subscriptionId, networkConfig.vrfCoordinator) =
-                subscriptionCreator.createSubscription(networkConfig.vrfCoordinator);
+                subscriptionCreator.createSubscription(networkConfig.vrfCoordinator, networkConfig.contact);
 
             FundSubscription funder = new FundSubscription();
-            funder.fundSubscription(networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.linkToken);
+            funder.fundSubscription(networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.linkToken, networkConfig.contact);
         }
 
-        vm.startBroadcast();
+        vm.startBroadcast(networkConfig.contact);
         Raffle raffle = new Raffle(
             networkConfig.entranceFee,
             networkConfig.raffleDuration,
@@ -43,7 +42,7 @@ contract DeployRaffle is Script {
         AddConsumer addConsumer = new AddConsumer();
 
         // no need to broadcast since it's already in addConsumer function
-        addConsumer.addConsumer(address(raffle), networkConfig.vrfCoordinator, networkConfig.subscriptionId);
+        addConsumer.addConsumer(address(raffle), networkConfig.vrfCoordinator, networkConfig.subscriptionId, networkConfig.contact);
 
         return (raffle, helperConfig);
     }

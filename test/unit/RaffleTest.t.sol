@@ -19,9 +19,9 @@ contract RaffleTest is Test {
     Raffle private raffle;
     HelperConfig private helperConfig;
 
-    uint256 ENTRANCE_FEE;
-    uint256 RAFFLE_DURATION;
-    uint256 MINIMUM_PLAYERS;
+    uint256 entranceFee;
+    uint256 raffleDuration;
+    uint256 minimumPlayers;
     address vrfCoordinator;
     bytes32 keyHash;
     uint256 subscriptionId;
@@ -33,16 +33,16 @@ contract RaffleTest is Test {
 
     modifier raffleEnteredByMinimumPlayers() {
         // 1. Have enough players enter the raffle.
-        // Using a loop makes it robust to changes in MINIMUM_PLAYERS.
-        for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
-            address player = address(uint160(i + 1)); // Create unique player addresses
-            vm.deal(player, ENTRANCE_FEE);
+        // Using a loop makes it robust to changes in minimumPlayers.
+        for (uint160 i = 1; i <= minimumPlayers; i++) {
+            address player = address(i); // Create unique player addresses
+            vm.deal(player, entranceFee);
             vm.prank(player);
-            raffle.enterRaffle{value: ENTRANCE_FEE}();
+            raffle.enterRaffle{value: entranceFee}();
         }
 
         // 2. Advance time to meet the duration requirement.
-        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
+        vm.warp(block.timestamp + raffleDuration + 1);
 
         // Also roll block number to simulate a realistic passage of time.
         vm.roll(block.number + 1);
@@ -54,9 +54,9 @@ contract RaffleTest is Test {
         (raffle, helperConfig) = deployer.run();
         blockStartTime = block.timestamp;
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
-        ENTRANCE_FEE = config.entranceFee;
-        RAFFLE_DURATION = config.raffleDuration;
-        MINIMUM_PLAYERS = config.minimumPlayers;
+        entranceFee = config.entranceFee;
+        raffleDuration = config.raffleDuration;
+        minimumPlayers = config.minimumPlayers;
         vrfCoordinator = config.vrfCoordinator;
         keyHash = config.keyHash;
         subscriptionId = config.subscriptionId;
@@ -71,9 +71,9 @@ contract RaffleTest is Test {
         (Raffle deployedRaffle, HelperConfig deployedConfig) = new DeployRaffle().deployContract();
         assert(address(deployedRaffle) != address(0));
         HelperConfig.NetworkConfig memory config = deployedConfig.getConfig();
-        assertEq(config.entranceFee, ENTRANCE_FEE);
-        assertEq(config.raffleDuration, RAFFLE_DURATION);
-        assertEq(config.minimumPlayers, MINIMUM_PLAYERS);
+        assertEq(config.entranceFee, entranceFee);
+        assertEq(config.raffleDuration, raffleDuration);
+        assertEq(config.minimumPlayers, minimumPlayers);
     }
 
     /**
@@ -135,15 +135,15 @@ contract RaffleTest is Test {
     }
 
     function testGetEntranceFee() public view {
-        assertEq(raffle.getEntranceFee(), ENTRANCE_FEE);
+        assertEq(raffle.getEntranceFee(), entranceFee);
     }
 
     function testGetMinimumPlayers() public view {
-        assertEq(raffle.getMinimumPlayers(), MINIMUM_PLAYERS);
+        assertEq(raffle.getMinimumPlayers(), minimumPlayers);
     }
 
     function testGetRaffleDuration() public view {
-        assertEq(raffle.getRaffleDuration(), RAFFLE_DURATION);
+        assertEq(raffle.getRaffleDuration(), raffleDuration);
     }
 
     /**
@@ -152,7 +152,7 @@ contract RaffleTest is Test {
 
     function testEnterRevertsIfNotEnoughEth() public {
         vm.expectRevert(Raffle.Raffle__NotEnoughMoneyToEnterRaffle.selector);
-        raffle.enterRaffle{value: ENTRANCE_FEE - 1}();
+        raffle.enterRaffle{value: entranceFee - 1}();
     }
 
     // How do I implement this?
@@ -165,37 +165,37 @@ contract RaffleTest is Test {
 
         // Act & Assert: Now that the state is CALCULATING, expect a revert.
         vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
-        raffle.enterRaffle{value: ENTRANCE_FEE}();
+        raffle.enterRaffle{value: entranceFee}();
     }
 
     function testRaffleEntryIsRecorded() public {
-        vm.deal(PLAYER, ENTRANCE_FEE * 5);
+        vm.deal(PLAYER, entranceFee * 5);
         vm.prank(PLAYER);
-        raffle.enterRaffle{value: ENTRANCE_FEE * 5}();
+        raffle.enterRaffle{value: entranceFee * 5}();
         assertEq(raffle.isUserInRaffle(PLAYER), true);
         assertEq(raffle.getRaffleEntrant(0), PLAYER);
         assertEq(raffle.getNumberOfTickets(PLAYER), 5);
     }
 
     function testGetTotalTickets() public {
-        vm.deal(PLAYER, ENTRANCE_FEE * 4);
+        vm.deal(PLAYER, entranceFee * 4);
         vm.prank(PLAYER);
-        raffle.enterRaffle{value: ENTRANCE_FEE * 4}();
+        raffle.enterRaffle{value: entranceFee * 4}();
 
-        vm.deal(PLAYER2, ENTRANCE_FEE * 6);
+        vm.deal(PLAYER2, entranceFee * 6);
         vm.prank(PLAYER2);
-        raffle.enterRaffle{value: ENTRANCE_FEE * 6}();
+        raffle.enterRaffle{value: entranceFee * 6}();
 
         assertEq(raffle.getTotalTickets(), 10);
     }
 
     function testGetRafflePool() public {
-        raffle.enterRaffle{value: ENTRANCE_FEE * 3}();
-        assertEq(raffle.getRafflePool(), ENTRANCE_FEE * 3);
+        raffle.enterRaffle{value: entranceFee * 3}();
+        assertEq(raffle.getRafflePool(), entranceFee * 3);
     }
 
     function testEnterEmitsRaffleEnterEvent() public {
-        vm.deal(PLAYER, ENTRANCE_FEE);
+        vm.deal(PLAYER, entranceFee);
         vm.prank(PLAYER);
 
         // Since you can have a maximum of three indexed parameters in an event,
@@ -203,7 +203,7 @@ contract RaffleTest is Test {
         // The last boolean is for enabling checking of the 'data' part of the event.
         vm.expectEmit(true, false, false, true, address(raffle));
         emit Raffle.RaffleEntered(PLAYER, 1);
-        raffle.enterRaffle{value: ENTRANCE_FEE}();
+        raffle.enterRaffle{value: entranceFee}();
     }
 
     /**
@@ -212,9 +212,9 @@ contract RaffleTest is Test {
 
     function testRevertWhenPerformUpkeepNotNeeded() public {
         // Arrange: Enter one player, but don't meet time or player minimums.
-        vm.deal(PLAYER, ENTRANCE_FEE);
+        vm.deal(PLAYER, entranceFee);
         vm.prank(PLAYER);
-        raffle.enterRaffle{value: ENTRANCE_FEE}();
+        raffle.enterRaffle{value: entranceFee}();
 
         // Act & Assert: Expect a revert with the correct error.
         // We pass the expected values for the error message to get a more precise check.
@@ -236,11 +236,11 @@ contract RaffleTest is Test {
         assertEq(upkeepNeeded, false);
 
         // Arrange: Enter enough players
-        for (uint256 i = 0; i < MINIMUM_PLAYERS; i++) {
-            address player = address(uint160(i + 1));
-            vm.deal(player, ENTRANCE_FEE);
+        for (uint160 i = 1; i <= minimumPlayers; i++) {
+            address player = address(i);
+            vm.deal(player, entranceFee);
             vm.prank(player);
-            raffle.enterRaffle{value: ENTRANCE_FEE}();
+            raffle.enterRaffle{value: entranceFee}();
         }
 
         // Act & Assert 1: Time has not passed, should be false
@@ -248,7 +248,7 @@ contract RaffleTest is Test {
         assertEq(upkeepNeeded, false);
 
         // Arrange 2: Advance time
-        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
+        vm.warp(block.timestamp + raffleDuration + 1);
         // Also roll block number to simulate a realistic passage of time.
         vm.roll(block.number + 1);
 
@@ -320,8 +320,7 @@ contract RaffleTest is Test {
         Raffle.RaffleState raffleState = raffle.getRaffleState();
         uint256 winnerBalance = address(recentWinner).balance;
         uint256 endingTimestamp = raffle.getRaffleStartTime();
-        uint256 prize = ENTRANCE_FEE * MINIMUM_PLAYERS;
-        uint256 rafflePool = raffle.getRafflePool();
+        uint256 prize = entranceFee * minimumPlayers;
 
         assertEq(recentWinner, expectedWinner);
         assert(raffleState == Raffle.RaffleState.OPEN);
@@ -336,21 +335,21 @@ contract RaffleTest is Test {
         address winnerAddress = address(winnerContract);
 
         // 3. Fund and enter the raffle as the rejecting contract.
-        vm.deal(address(0), ENTRANCE_FEE); // Fund the contract to enter the raffle
+        vm.deal(address(0), entranceFee); // Fund the contract to enter the raffle
         vm.prank(address(0));
-        raffle.enterRaffle{value: ENTRANCE_FEE}();
+        raffle.enterRaffle{value: entranceFee}();
 
-        vm.deal(address(1), ENTRANCE_FEE); // Fund another player
+        vm.deal(address(1), entranceFee); // Fund another player
         vm.prank(address(1));
-        raffle.enterRaffle{value: ENTRANCE_FEE}();
+        raffle.enterRaffle{value: entranceFee}();
 
         // Our "Determistic" mock always picks the last entrant
-        vm.deal(winnerAddress, ENTRANCE_FEE);
+        vm.deal(winnerAddress, entranceFee);
         vm.prank(winnerAddress);
-        raffle.enterRaffle{value: ENTRANCE_FEE}();
+        raffle.enterRaffle{value: entranceFee}();
 
         // 4. Advance time to allow for winner selection.
-        vm.warp(block.timestamp + RAFFLE_DURATION + 1);
+        vm.warp(block.timestamp + raffleDuration + 1);
         vm.roll(block.number + 1);
 
         // Act
@@ -363,7 +362,7 @@ contract RaffleTest is Test {
         // Assert
         // 6. Fulfill the request and expect the `Raffle__TransferFailed` error.
         vm.expectEmit(true, false, false, true, address(raffle));
-        emit Raffle.TransferFailed(winnerAddress, ENTRANCE_FEE * 3);
+        emit Raffle.TransferFailed(winnerAddress, entranceFee * 3);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(uint256(requestId), address(raffle));
     }
 

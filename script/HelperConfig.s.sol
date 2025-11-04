@@ -16,6 +16,7 @@ contract HelperConfig is Script {
         uint256 subscriptionId;
         uint32 callbackGasLimit;
         address linkToken;
+        address contact;
     }
 
     NetworkConfig public activeNetworkConfig;
@@ -44,10 +45,11 @@ contract HelperConfig is Script {
             raffleDuration: RAFFLE_DURATION,
             minimumPlayers: MINIMUM_PLAYERS,
             callbackGasLimit: CALLBACK_GAS_LIMIT,
-            subscriptionId: SUBSCRIPTION_ID,
+            subscriptionId: 100317252979576726800417643295236341402987354056607812142892677616215766000051,
             vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-            linkToken: 0x779877A7B0D9E8603169DdbD7836e478b4624789
+            linkToken: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
+            contact: 0x4D918c44815680e10A04fa5FE5D232F4C6e01Ab8
         });
     }
 
@@ -57,10 +59,11 @@ contract HelperConfig is Script {
             raffleDuration: RAFFLE_DURATION,
             minimumPlayers: MINIMUM_PLAYERS,
             callbackGasLimit: CALLBACK_GAS_LIMIT,
-            subscriptionId: SUBSCRIPTION_ID,
+            subscriptionId: 104653619010104492863966397771792999601147158938402483562660287408202435181427,
             vrfCoordinator: 0x5CE8D5A2BC84beb22a398CCA51996F7930313D61,
             keyHash: 0x1770bdc7eec7771f7ba4ffd640f34260d7f095b79c92d34a5b2551d6f6cfd2be,
-            linkToken: 0xb1D4538B4571d411F07960EF2838Ce337FE1E80E
+            linkToken: 0xb1D4538B4571d411F07960EF2838Ce337FE1E80E,
+            contact: 0x4D918c44815680e10A04fa5FE5D232F4C6e01Ab8
         });
     }
 
@@ -70,7 +73,7 @@ contract HelperConfig is Script {
         }
 
         vm.startBroadcast();
-        VRFCoordinatorV2_5Mock vrfCoordinatorV2_5Mock = new VRFCoordinatorV2_5Mock(
+        VRFCoordinatorV2_5Mock vrfCoordinatorMock = new VRFCoordinatorV2_5Mock(
             0.25 ether, // Base fee
             1e9, // Gas price link
             4e15 // Wei per unit link
@@ -86,9 +89,10 @@ contract HelperConfig is Script {
             minimumPlayers: MINIMUM_PLAYERS,
             callbackGasLimit: CALLBACK_GAS_LIMIT,
             subscriptionId: 0,
-            vrfCoordinator: address(vrfCoordinatorV2_5Mock),
+            vrfCoordinator: address(vrfCoordinatorMock),
             keyHash: 0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15, // value doesn't matter
-            linkToken: address(linkToken)
+            linkToken: address(linkToken),
+            contact: 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38 // default sender address
         });
 
         return activeNetworkConfig;

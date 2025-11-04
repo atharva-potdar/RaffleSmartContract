@@ -167,7 +167,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      *          5. (implicit) subscription should be funded
      * @param                - ignored
      * @return  upkeepNeeded - true if winner needs to be picked
-     * @return  bytes        - ignored
+     * @return  performData  - ignored
      */
     function checkUpkeep(
         bytes memory /* checkData */
@@ -177,12 +177,14 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         override
         returns (
             bool upkeepNeeded,
-            bytes memory /* performData */
+            bytes memory performData // ignored, but name given to avoid linting errors
         )
     {
         upkeepNeeded = (block.timestamp - sRaffleStartTime >= I_RAFFLE_DURATION)
             && (sUniquePlayersList.length >= I_MINIMUM_PLAYERS) && (sRaffleState == RaffleState.OPEN)
             && (address(this).balance > 0);
+
+        performData = ""; // ignored
     }
 
     // @dev Function to pick a winner
@@ -196,7 +198,6 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         if (!upkeepNeeded) {
             revert Raffle__UpkeepNotNeeded(address(this).balance, sUniquePlayersList.length, uint256(sRaffleState));
         }
-        uint256 totalRaffleTickets = sTotalTickets;
 
         // Checks - moved to checkUpkeep
         // if (totalRaffleTickets < I_MINIMUM_PLAYERS) {
@@ -227,7 +228,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     }
 
     // TODO: Write tests for this function
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+    function fulfillRandomWords(uint256 /* requestId */, uint256[] calldata randomWords) internal override {
         address[] memory playersList = sUniquePlayersList;
         address payable winner = payable(playersList[randomWords[0] % playersList.length]);
         sRecentWinner = winner;
