@@ -227,7 +227,6 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         emit RequestedRaffleWinner(requestId);
     }
 
-    // TODO: Write tests for this function
     function fulfillRandomWords(
         uint256,
         /* requestId */
@@ -236,6 +235,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         internal
         override
     {
+        // TODO: Modify this to account for ticket counts
         address[] memory playersList = sUniquePlayersList;
         address payable winner = payable(playersList[randomWords[0] % playersList.length]);
         sRecentWinner = winner;

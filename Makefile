@@ -18,4 +18,10 @@ build :; forge build
 test :; forge test
 
 format :; forge fmt
+
+deploy-ethsep :
+	@forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ETH_SP_RPC_URL) --account metamaskKey --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
+
+deploy-arbsep :
+	@forge script script/DeployRaffle.s.sol:DeployRaffle --rpc-url $(ARB_SP_RPC_URL) --account metamaskKey --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
 # Thank you Cyfrin!
